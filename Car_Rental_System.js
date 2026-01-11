@@ -11,13 +11,13 @@ class InvalidRentalDurationError extends Error {
     }
 }
 
-const seasonFactor = (season) => {
+const seasonFactor = function(season) {
     const price = {
         low: 1,
         high: 1.2,
         peak: 1.5
     };
-    if (typeof season !== "string" && season.length === 0) {
+    if (typeof season !== "string" || season.length === 0) {
             throw new Error("Invalid season name");
         }
     if (season === "winter") return price.high;
@@ -25,7 +25,6 @@ const seasonFactor = (season) => {
     if (season === "spring") return price.low;
     if (season === "autumn") return price.low;
 }
-const cars = [];
 
 class Rental {
    static rentalId = 1;
@@ -40,7 +39,6 @@ class Rental {
         this.rentalDuration = rentalDuration;
         this.season = seasonFactor(season);
         this.demand = Rental.demand++;
-        this.cars = [];
     }
     rentCar() {
         if (typeof this.rentalDuration !== "number" || this.rentalDuration <= 0) {
@@ -91,6 +89,8 @@ class LuxuryRental extends Rental {
 }
 
 class Car {
+    static cars = [];
+
     constructor(make, model, rentalPricePerDay) {
         Object.defineProperties(this, {
             make: {
@@ -99,7 +99,7 @@ class Car {
                 },
                 set(value) {
                     if (!value || typeof value !== "string") {
-                        throw new Error(`Invalid ${value}`);
+                        throw new Error(`Invalid make`);
                     }
                     this._make = value;
                 }
@@ -110,7 +110,7 @@ class Car {
                 },
                 set(value) {
                     if (!value || typeof value !== "string") {
-                        throw new Error(`Invalid ${value}`);
+                        throw new Error(`Invalid model`);
                     }
                     this._model = value;
                 }
@@ -149,7 +149,7 @@ class Car {
 class EconomyCar extends Car {
     constructor(make, model, rentalPricePerDay) {
         super(make, model, rentalPricePerDay);
-        if (new.target === EconomyCar) cars.push({
+        if (new.target === EconomyCar) Car.cars.push({
             make: this.make,
             model: this.model,
             rentalPricePerDay: this.rentalPricePerDay
@@ -159,7 +159,7 @@ class EconomyCar extends Car {
 class LuxuryCar extends Car {
      constructor(make, model, rentalPricePerDay) {
         super(make, model, rentalPricePerDay);
-        if (new.target === LuxuryCar) cars.push({
+        if (new.target === LuxuryCar) Car.cars.push({
             make: this.make,
             model: this.model,
             rentalPricePerDay: this.rentalPricePerDay
@@ -176,7 +176,7 @@ class Customer {
                 },
                 set(value) {
                     if (!value || typeof value !== "string") {
-                        throw new Error(`Invalid ${value}`);
+                        throw new Error(`Invalid name`);
                     }
                     this._name = value;
                 }
@@ -187,7 +187,12 @@ class Customer {
                 },
                 set(value) {
                     const email = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-                    if (!value || typeof value !== "string" || !(email.test(value))) {
+                    const phone = /^0\d{8}$/;
+                
+                    if (!value || 
+                        typeof value !== "string" || 
+                        !(email.test(value) ||
+                        !(phone.test(value)))) {
                         throw new Error("Invalid contactInfo");
                     }
                     this._contactInfo = value;
@@ -200,12 +205,12 @@ class Customer {
     }
     searchCars(filters) {
         const result = [];
-            for(let i = 0; i < cars.length; ++i) {
+            for(let i = 0; i < Car.cars.length; ++i) {
                 let flag = true;
-                if (cars[i].make !== filters.make) flag = false;
-                if (cars[i].model !== filters.model) flag = false;
-                if (cars[i].rentalPricePerDay > filters.maxPricePerDay) flag = false;
-                if (flag) result.push(cars[i]);
+                if (Car.cars[i].make !== filters.make) flag = false;
+                if (Car.cars[i].model !== filters.model) flag = false;
+                if (Car.cars[i].rentalPricePerDay > filters.maxPricePerDay) flag = false;
+                if (flag) result.push(Car.cars[i]);
         }
         if (result.length === 0) {
             throw new Error("Car not found");
@@ -214,32 +219,30 @@ class Customer {
     }
 
     viewRentalHistory() {
-        return  this.rentalHistory.forEach(rental => {
-            console.log(
-                `Rental Id: ${rental.rentalId},
-                Car: ${rental.car.make} ${rental.car.model},
-                Rental Duration: $${rental.rentalDuration},
-                Total Price: $${rental.totalPrice} `
-            );
-        });
+        return  this.rentalHistory.map(rental => 
+            `Rental Id: ${rental.rentalId},
+            Car: ${rental.car.make} ${rental.car.model},
+            Rental Duration: ${rental.rentalDuration} days,
+            Total Price: $${rental.totalPrice} `
+        );
     }
 }
 
 const economyCar01 = new EconomyCar("BMW", "X5", 20);
 const economyCar02 = new EconomyCar("Mercedes-Benz", "C-Class", 25);
-const luxuryCar01 = new LuxuryCar("Rolls-Roys", "SUVs", 75);
+const luxuryCar01 = new LuxuryCar("Rolls-Royce", "SUVs", 75);
 
 const customer1 = new Customer("Annet", "anNet@mail.com");
 const customer2 = new Customer("Bob", "smith24@mail.com")
 
-const economeRental = new EconomyRental(customer1, economyCar01, 5, "summer");
+const economyRental = new EconomyRental(customer1, economyCar01, 5, "summer");
 const luxuryRental = new LuxuryRental(customer2, luxuryCar01, 10, "winter");
 
-economeRental.rentCar();
+economyRental.rentCar();
 luxuryRental.rentCar();
-customer1.viewRentalHistory();
-customer2.viewRentalHistory();
-console.log(cars);
+console.log(customer1.viewRentalHistory());
+console.log(customer2.viewRentalHistory());
+console.log(Car.cars);
 
 console.log(customer2.searchCars({
     make:"Mercedes-Benz", 
